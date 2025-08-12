@@ -1,0 +1,22 @@
+{
+  "name": "@multi/core",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -w -p tsconfig.json"
+  },
+  "dependencies": {
+    "@dqbd/tiktoken": "^1.0.16",
+    "openai": "^4.56.0",
+    "dotenv": "^16.4.5"
+  }
+}

@@ -1,0 +1,23 @@
+# Node
+node_modules
+dist
+.DS_Store
+
+# secrets
+memory.jsonl
+memory_export.jsonl
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode
+.idea
+
+#env
+.env
+.env.OPENAI_API_KEY
+.env.TAVILY_API_KEY

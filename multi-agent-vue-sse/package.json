@@ -1,0 +1,20 @@
+{
+  "name": "multi-agent-vue-sse",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n core,server,web -c magenta,blue,green \"npm:dev -w packages/core\" \"npm:dev -w apps/server\" \"npm:dev -w apps/web\"",
+    "build": "npm run build -w packages/core && npm run build -w apps/server && npm run build -w apps/web",
+    "start": "node apps/server/dist/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
