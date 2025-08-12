@@ -1,6 +1,5 @@
 node_modules
 dist
-.env.OPENAI_API_KEY
-.env.TAVILY_API_KEY
+.env
 .vscode
 .DS_Store
