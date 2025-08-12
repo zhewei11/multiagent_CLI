@@ -11,8 +11,11 @@ const __dirname = path.dirname(__filename);
 
 // 讀取 .env（先嘗試 server/.env，再嘗試專案根目錄 .env）
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// 檢查必要環境變數
+if (!process.env.TAVILY_API_KEY) {
+  console.warn('[server] Missing TAVILY_API_KEY: Web 搜尋將無法取得來源');
+}
 const app = express();
 app.use(cors());
 app.use(express.json());
