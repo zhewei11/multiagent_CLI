@@ -1,21 +1,44 @@
 // apps/server/src/index.ts
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runPipeline, Settings } from '@multi/core';
+import { ResearchPipeline, Settings } from '@multi/core';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 讀取 .env（先嘗試 server/.env，再嘗試專案根目錄 .env）
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-// 檢查必要環境變數
-if (!process.env.TAVILY_API_KEY) {
-  console.warn('[server] Missing TAVILY_API_KEY: Web 搜尋將無法取得來源');
+// 修复环境变量加载问题
+// 按优先级顺序加载：1. 项目根目录 .env, 2. server目录 .env, 3. 系统环境变量
+const rootEnvPath = path.resolve(__dirname, '../../../.env');
+const serverEnvPath = path.resolve(__dirname, '../.env');
+
+console.log('[server] 环境变量加载路径:');
+console.log(`  - 项目根目录: ${rootEnvPath}`);
+console.log(`  - Server目录: ${serverEnvPath}`);
+
+// 先加载项目根目录的 .env
+dotenv.config({ path: rootEnvPath });
+console.log(`[server] 根目录 .env 加载状态: ${process.env.OPENAI_API_KEY ? '成功' : '失败'}`);
+
+// 再加载 server 目录的 .env（会覆盖根目录的配置）
+dotenv.config({ path: serverEnvPath });
+console.log(`[server] Server目录 .env 加载状态: ${process.env.OPENAI_API_KEY ? '成功' : '失败'}`);
+
+// 检查必要环境变量
+if (!process.env.OPENAI_API_KEY) {
+  console.error('[server] ❌ 缺少 OPENAI_API_KEY: 系统无法正常工作');
+  process.exit(1);
 }
+
+if (!process.env.TAVILY_API_KEY) {
+  console.warn('[server] ⚠️ 缺少 TAVILY_API_KEY: Web 搜索功能将被禁用');
+  console.warn('[server] 请在 .env 文件中添加 TAVILY_API_KEY=tvly-...');
+} else {
+  console.log('[server] ✅ TAVILY_API_KEY 配置成功，Web 搜索功能已启用');
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -34,7 +57,7 @@ const DEF = {
 };
 
 // 提供前端取用的預設
-app.get('/api/config', (_req, res) => {
+app.get('/api/config', (_req: Request, res: Response) => {
   res.json({
     targetLang: DEF.TARGET_LANG,
     speedMode: DEF.SPEED_MODE,
@@ -46,7 +69,7 @@ app.get('/api/config', (_req, res) => {
 });
 
 // SSE：主執行端點
-app.get('/api/chat', async (req, res) => {
+app.get('/api/chat', async (req: Request, res: Response) => {
   const question = String(req.query.question ?? '').trim();
   if (!question) return res.status(400).end('missing question');
 
@@ -85,12 +108,8 @@ app.get('/api/chat', async (req, res) => {
   req.on('close', () => { clearInterval(keepalive); ac.abort(); });
 
   try {
-    await runPipeline({
-      question,
-      settings,
-      emit: (ev, payload) => send(ev, payload),
-      signal: ac.signal,
-    });
+    const pipeline = new ResearchPipeline();
+    await pipeline.runPipeline(question, settings, (ev: string, payload: any) => send(ev, payload));
   } catch (err: any) {
     console.error('[pipeline] failed:', err);
     send('error', { message: err?.message || 'unknown error' });
@@ -101,14 +120,19 @@ app.get('/api/chat', async (req, res) => {
   }
 });
 
-// 部署時（可選）：同站服務前端打包檔
+// 靜態檔托管（production 模式）
 if (process.env.NODE_ENV === 'production') {
-  const distPath = path.resolve(__dirname, '../../web/dist');
+  const distPath = path.resolve(__dirname, '../web/dist');
   app.use(express.static(distPath));
-  app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+  
+  // SPA fallback
+  app.get('*', (_req: Request, res: Response) => res.sendFile(path.join(distPath, 'index.html')));
 }
 
-const PORT = Number(process.env.PORT ?? 8787);
-app.listen(PORT, () => {
-  console.log(`[server] listening on http://localhost:${PORT}`);
+const port = process.env.PORT || 8787;
+app.listen(port, () => {
+  console.log(`[server] Listening on http://localhost:${port}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`[server] Serving static files from ${path.resolve(__dirname, '../web/dist')}`);
+  }
 });
